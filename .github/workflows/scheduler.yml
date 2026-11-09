@@ -1,0 +1,62 @@
+name: 飞书门店调度
+
+on:
+  # UTC 6:00–15:59 ≈ 北京时间 14:00–23:59（覆盖全部定时任务窗口）
+  schedule:
+    - cron: '*/10 6-15 * * *'
+  # 手动触发：可指定 job = dispatch|check|refresh|duty|summary|verify
+  workflow_dispatch:
+    inputs:
+      job:
+        description: '任务: dispatch(默认按时间分流) | check | refresh | duty | summary | verify'
+        required: false
+        default: 'dispatch'
+
+# duty/summary 的去重标记通过 markers.json 回写本仓库，需要写权限
+permissions:
+  contents: write
+
+# 串行执行：避免一次运行超过 10 分钟时与下一拍重叠导致重复发卡
+concurrency:
+  group: feishu-scheduler
+  cancel-in-progress: false
+
+env:
+  APP_SECRETS: ${{ secrets.APP_SECRETS }}      # tar(gzip(base64)) 的 config/ + .env
+  FB_MODE: ${{ vars.FB_MODE || 'live' }}        # 运行时模式：live=发群/trial=仅本人
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}     # 供 markers.json 回写仓库
+  TZ: Asia/Shanghai
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 安装 Python 依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r app/requirements.txt
+          pip install playwright
+
+      - name: 缓存 Playwright 浏览器
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: pw-${{ runner.os }}-${{ hashFiles('app/requirements.txt') }}
+
+      - name: 安装 Chromium（含系统依赖）
+        run: playwright install --with-deps chromium
+
+      - name: 定位 Chromium 可执行文件
+        run: echo "CHROMIUM_PATH=$(ls ~/.cache/ms-playwright/chromium-*/chrome-linux/chrome | head -1)" >> "$GITHUB_ENV"
+
+      - name: 运行任务
+        run: |
+          cd app
+          python run_job.py "${{ github.event.inputs.job || 'dispatch' }}"

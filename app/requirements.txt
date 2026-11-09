@@ -1,0 +1,9 @@
+# 运行期第三方依赖（运行期实际 import 的第三方包只有 flask；requests 为 flask 传递依赖，显式声明更稳妥）
+flask>=2.0
+requests>=2.25
+
+# 看板/回复率截图抓取需要无头浏览器
+playwright>=1.40
+
+# 可选：OCR 回复率截图判定（环境无 tesseract 时代码自动跳过，不影响卡片正常生成/刷新）
+# pytesseract>=0.3

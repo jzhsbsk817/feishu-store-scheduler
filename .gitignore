@@ -1,0 +1,20 @@
+# ---- 密钥与含密钥配置：运行时由 GitHub Secrets(APP_SECRETS) 还原，绝不入库 ----
+app/config/
+app/.env
+.env
+config/
+*.env
+
+# ---- 运行时数据 / 日志 / 锁 ----
+app/data/
+data/
+__pycache__/
+*.pyc
+*.lock
+*.pid
+deploy.log
+watchdog.log
+*.json.log
+
+# ---- 去重标记需入库（跨运行持久化）----
+!markers.json

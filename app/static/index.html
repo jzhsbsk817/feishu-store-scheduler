@@ -1,0 +1,566 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#3370FF">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>定时任务调度台</title>
+<style>
+:root{
+  --bg:#EEF0F4; --card:#FFFFFF; --ink:#1F2430; --text-2:#5A6272;
+  --text-3:#9AA0AC; --line:#E7EAF0; --brand:#3370FF; --brand-ink:#2451DB;
+  --brand-soft:#EDF2FF; --red:#C92A2A; --red-soft:#FFECEC;
+  --green:#2B8A3E; --green-soft:#E8F6EC; --amber:#E8590C; --amber-soft:#FFF1E8;
+  --term:#171A21; --term-line:#2A3040; --term-text:#D7DCE6;
+  --font:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch}
+html,body{margin:0}
+body{background:var(--bg);font:14px/1.55 var(--font);color:var(--ink);
+  -webkit-font-smoothing:antialiased;display:flex;justify-content:center;align-items:flex-start;
+  min-height:100%;overflow-x:hidden;
+  padding:24px 12px calc(28px + env(safe-area-inset-bottom))}
+.device{width:100%;max-width:440px;background:#fff;border-radius:28px;overflow:hidden;
+  box-shadow:0 24px 70px -24px rgba(24,34,60,.38),0 0 0 1px rgba(20,28,48,.06);position:relative}
+.screen{min-height:760px;display:flex;flex-direction:column;position:relative}
+.status-bar{display:flex;align-items:center;justify-content:space-between;
+  padding:12px 20px 2px;font:600 11px var(--mono);color:var(--text-2);letter-spacing:.3px}
+.status-bar .dots{display:flex;gap:5px;align-items:center}
+.status-bar .dots i{width:5px;height:5px;border-radius:50%;background:var(--brand);display:block;opacity:.55}
+.top{padding:14px 20px 16px;border-bottom:1px solid var(--line)}
+.top h1{font-size:20px;font-weight:680;letter-spacing:.2px}
+.top .sub{font-size:11.5px;color:var(--text-3);margin-top:3px}
+.top-row{display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap}
+.chip{font:600 10.5px var(--mono);padding:4px 9px;border-radius:6px;
+  background:var(--brand-soft);color:var(--brand-ink);letter-spacing:.2px}
+.chip.off{background:#F1F2F5;color:var(--text-3)}
+.chip.ok{background:var(--green-soft);color:var(--green)}
+.chip.warn{background:var(--amber-soft);color:var(--amber)}
+main{padding:16px 16px calc(20px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:14px;flex:1}
+.section-title{font-size:11px;font-weight:650;color:var(--text-3);letter-spacing:1.2px;text-transform:uppercase;
+  display:flex;align-items:center;gap:8px}
+.section-title::after{content:"";height:1px;background:var(--line);flex:1}
+.gate{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;
+  box-shadow:0 2px 10px -6px rgba(24,34,60,.16)}
+.gate-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.gate-head b{font-size:13px;font-weight:650}
+.gate-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.gcell{background:#F7F8FA;border-radius:9px;padding:9px 10px}
+.gcell .k{font-size:10px;color:var(--text-3)}
+.gcell .v{font:650 15px var(--mono);margin-top:3px;color:var(--ink)}
+.gate-note{font-size:11px;color:var(--text-2);margin-top:10px;line-height:1.55}
+.gate-note strong{color:var(--red)}
+.task-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:15px;
+  box-shadow:0 2px 10px -6px rgba(24,34,60,.16)}
+.task-top{display:flex;align-items:center;gap:8px}
+.task-id{font:650 11px var(--mono);color:var(--brand-ink);background:var(--brand-soft);padding:3px 7px;border-radius:5px}
+.badge{font-size:10px;font-weight:600;color:var(--green);background:var(--green-soft);padding:3px 8px;border-radius:5px}
+.badge.amber{color:var(--amber);background:var(--amber-soft)}
+.spacer{flex:1}
+.task-index{font:600 9.5px var(--mono);color:var(--text-3);letter-spacing:1px}
+.field-label{display:block;font-size:10.5px;color:var(--text-3);margin-top:14px;letter-spacing:.4px}
+.task-name{width:100%;border:1px solid transparent;border-radius:8px;padding:7px 8px;margin-top:4px;
+  font:650 16px var(--font);color:var(--ink);background:#F7F8FA;outline:none}
+.field-hint{font-size:11px;color:var(--text-3);margin-top:7px;line-height:1.6}
+.field-hint b{color:var(--text-2)}
+.flow{display:flex;align-items:center;gap:6px;margin-top:11px;flex-wrap:wrap}
+.flow .step{font-size:10.5px;font-weight:600;padding:5px 8px;border-radius:7px;background:var(--brand-soft);color:var(--brand-ink)}
+.flow .step.t2{background:var(--amber-soft);color:#B8530B}
+.flow .step.t4{background:var(--green-soft,#E8F6EC);color:#1B7A3E}
+.flow .step.t3{background:#EFEDFF;color:#4739A8}
+.flow .arw{color:var(--text-3);font-size:11px}
+.flow.col{flex-direction:column;align-items:stretch;gap:6px}
+.flow.col .step{display:flex;align-items:center;gap:6px;font-size:11px}
+.flow.col .step em{margin-left:auto;font-style:normal;font:600 9.5px var(--mono);opacity:.75;white-space:nowrap}
+.divider{height:1px;background:var(--line);margin:13px 0}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.actions.three{grid-template-columns:1fr 1fr 1fr}
+.btn{position:relative;border-radius:10px;padding:11px 10px;cursor:pointer;border:1px solid var(--line);
+  background:#fff;color:var(--ink);text-align:left;transition:transform .12s,box-shadow .2s,background .2s;overflow:hidden}
+.btn:active{transform:scale(.97)}
+.btn:disabled{opacity:.55;cursor:not-allowed}
+.btn-title{display:block;font-size:12.5px;font-weight:650}
+.btn-sub{display:block;font-size:9.5px;color:var(--text-3);margin-top:2px}
+.btn-ghost:hover{border-color:var(--brand);background:var(--brand-soft)}
+.btn-primary{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn-primary .btn-sub{color:rgba(255,255,255,.8)}
+.btn-primary:hover{background:var(--brand-ink)}
+.spinner{display:none;position:absolute;right:8px;top:50%;margin-top:-7px;width:14px;height:14px;
+  border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:spin .7s linear infinite;opacity:.7}
+.btn.is-loading .spinner{display:block}
+@keyframes spin{to{transform:rotate(360deg)}}
+.sub-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}
+.mini{border:1px solid var(--line);border-radius:9px;padding:8px 9px;background:#FAFBFC;cursor:pointer;
+  font:600 11px var(--font);color:var(--text-2);text-align:center}
+.mini:hover{border-color:var(--brand);color:var(--brand-ink);background:var(--brand-soft)}
+.links{display:flex;flex-direction:column;gap:6px;margin-top:2px}
+.link{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--brand-ink);text-decoration:none;
+  background:var(--brand-soft);border-radius:8px;padding:8px 10px}
+.link .lk{font-weight:650}.link .lv{flex:1;color:var(--text-2);font-size:10px;font-family:var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.link .arrow{color:var(--brand)}
+.shot{margin-top:9px;border:1px solid var(--line);border-radius:9px;overflow:hidden;background:#F7F8FA}
+.shot summary{font-size:11px;color:var(--text-2);font-weight:600;cursor:pointer;padding:8px 10px;list-style:none}
+.shot summary::-webkit-details-marker{display:none}
+.shot summary::before{content:"▸ ";color:var(--brand)}
+.shot[open] summary::before{content:"▾ "}
+.shot img{display:block;width:100%;height:auto;border-top:1px solid var(--line)}
+.result{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;
+  box-shadow:0 2px 10px -6px rgba(24,34,60,.16)}
+.result-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap;row-gap:2px}
+.result-head b{font-size:13px;font-weight:650}
+.result-head span{font:10px var(--mono);color:var(--text-3)}
+.runinfo{margin-top:10px;background:#F7F8FA;border-radius:9px;padding:9px 10px;font-size:11px;line-height:1.7}
+.runinfo .k{color:var(--text-3)}.runinfo .v{font-family:var(--mono);font-size:10px;color:var(--text-2)}
+.rblock{margin-top:11px;padding:10px 11px;background:#F7F8FA;border-radius:9px}
+.rblock h3{font-size:11.5px;font-weight:650;color:var(--text-2);margin-bottom:6px}
+.rrow{display:flex;align-items:baseline;gap:6px;font-size:12px;padding:2px 0;flex-wrap:wrap}
+.rrow .at{color:var(--brand);font-weight:650}
+.rrow .nm{color:var(--ink)}
+.rrow .mg{color:var(--text-3);font-size:11px}
+.rrow .vv{margin-left:auto;font:600 12px var(--mono);color:var(--red)}
+.rsub{font-size:10.5px;font-weight:650;color:var(--brand-ink);margin:7px 0 2px}
+.blk-title{font-size:11.5px;font-weight:650;color:var(--ink);margin:10px 0 4px}
+.blk-title .cnt{font:600 10px var(--mono);color:var(--text-3);margin-left:5px}
+.blk-note{font-size:10px;color:var(--text-3);line-height:1.5;margin-bottom:6px}
+.fbrow{display:flex;align-items:center;gap:6px;font-size:12px;padding:5px 0;border-bottom:1px dashed var(--line);flex-wrap:wrap}
+.fbrow:last-child{border-bottom:0}
+.smwrap{display:flex;flex-wrap:wrap;gap:5px}
+.smname{font-size:10.5px;color:var(--text-2);background:#fff;border:1px solid var(--line);
+  border-radius:6px;padding:3px 7px;white-space:nowrap}
+.smname.ok{color:var(--green);border-color:#D6EEDC;background:var(--green-soft)}
+.smfold summary{display:flex;align-items:center;gap:8px;cursor:pointer;list-style:none}
+.smfold summary::-webkit-details-marker{display:none}
+.smfold summary>span{font-size:11.5px;font-weight:650}
+.smfold summary em{margin-left:auto;font-style:normal;font:600 9.5px var(--mono);color:var(--text-3)}
+.smfold summary::before{content:"▸";color:var(--brand);font-size:10px}
+.smfold[open] summary::before{content:"▾"}
+.smfold[open] summary{margin-bottom:8px}
+.smfold[open] summary em{visibility:hidden}
+.fbrow .fname{font-weight:600;min-width:96px}
+.fbrow .fmgr{color:var(--text-3);font-size:10.5px;margin-left:auto}
+.mk{font:600 12px var(--mono);white-space:nowrap}
+.mk.y{color:var(--green)}.mk.n{color:var(--red)}.mk.na{color:var(--text-3);font-size:10.5px}
+.mkcell{display:inline-flex;align-items:center;gap:3px;font-size:10px;color:var(--text-3)}
+.empty{font-size:11.5px;color:var(--text-3);padding:6px 0}
+.log-panel{background:var(--term);border-radius:14px;overflow:hidden;border:1px solid var(--term-line)}
+.log-head{display:flex;align-items:center;gap:8px;padding:11px 13px;border-bottom:1px solid var(--term-line)}
+.log-dot{width:7px;height:7px;border-radius:50%;background:#3DDC84;box-shadow:0 0 0 3px rgba(61,220,132,.14)}
+.log-title{font:600 11px var(--mono);color:#E6EAF2;letter-spacing:.4px;flex:1}
+.log-clear{background:none;border:0;color:#8A93A6;font:10px var(--mono);cursor:pointer;padding:3px 5px}
+.log-clear:hover{color:#fff}
+.log-body{max-height:240px;min-height:70px;overflow-y:auto;padding:11px 13px;
+  font:11px/1.75 var(--mono);color:var(--term-text);scrollbar-width:thin}
+.log-line{white-space:pre-wrap;word-break:break-all}
+.log-line.ok{color:#7EE2A8}.log-line.err{color:#FF8F8F}.log-line.warn{color:#F5C26B}
+.log-line.t02{color:#F5C26B}
+.run-block{border-top:1px dashed var(--term-line);padding-top:9px;margin-top:9px}
+.run-block:first-child{border-top:0;margin-top:0;padding-top:0}
+.run-head{color:#8FA6FF;font-weight:600;margin-bottom:3px}
+.log-empty{color:#6E7A91;text-align:center;padding:22px 0;font-size:11px}
+.foot{font-size:10px;color:var(--text-3);line-height:1.6;text-align:center;padding:2px 8px 6px}
+.tpl-imgs{display:flex;gap:8px;margin:6px 0 2px}
+.tpl-img{flex:1;height:66px;margin:0 14px;border:1px dashed var(--line);border-radius:8px;background:var(--bg-2);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font-size:11.5px;color:var(--text-2);font-weight:600;gap:3px}
+.tpl-img span{font-weight:400;font-size:10px;color:var(--text-3)}
+.tpl-btns{display:flex;gap:8px;margin-top:6px}
+.tpl-btn{flex:1;text-align:center;padding:8px 6px;border-radius:8px;border:1px solid var(--line);
+  font-size:11.5px;font-weight:600;color:var(--text-2);background:var(--bg-2)}
+.tpl-btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+.tpl-tag{display:inline-block;padding:1px 6px;border-radius:5px;background:var(--bg-2);
+  border:1px solid var(--line);font-size:10px;color:var(--text-3);margin-left:6px}
+.tpl-fail{border:1px solid var(--line);border-radius:10px;padding:10px 11px;background:#fff}
+.tpl-pair{display:flex;gap:8px;margin-top:8px}
+.tpl-pair>div{flex:1;min-width:0}
+.tpl-pcols{display:flex;gap:8px;margin-top:6px}
+.tpl-pcol{flex:1;min-width:0;border:1px solid var(--line);border-radius:8px;
+  background:var(--bg-2);padding:9px 10px;font-size:11px}
+.tpl-pcol b{display:block;font-size:11px;font-weight:650;color:var(--text-2);margin-bottom:5px}
+.tpl-pcol span{color:var(--brand-ink);font-size:10.5px;line-height:1.7}
+.tpl-fail-h{background:#FDECEC;color:#C4312B;border-radius:8px;padding:9px 11px;font-size:12px;
+  font-weight:700;display:flex;justify-content:space-between;align-items:center}
+.tpl-fail-h span{font:600 9.5px var(--mono);opacity:.72}
+@media(max-width:480px){
+  body{padding:0;background:#fff}
+  .device{max-width:none;border-radius:0;box-shadow:none;min-height:100vh}
+  .status-bar{padding-top:calc(10px + env(safe-area-inset-top))}
+  .screen{min-height:100vh}
+  .log-body{max-height:none}
+}
+</style>
+</head>
+<body>
+<div class="device"><div class="screen">
+  <div class="status-bar"><span>10:20</span><span class="dots"><i></i><i></i><i></i></span><span>5G · 100%</span></div>
+  <header class="top">
+    <h1>定时任务</h1>
+    <p class="sub">所有定时任务上传至此，在网页端执行</p>
+    <div class="top-row">
+      <span class="chip off" id="svcChip">连接中…</span>
+      <span class="chip" id="gateChip">日期闸门 —</span>
+      <span class="chip ok" id="pollChip">每秒轮询中</span>
+    </div>
+  </header>
+
+  <main>
+    <div class="section-title">日期闸门 · GATE</div>
+    <section class="gate">
+      <div class="gate-head"><b>数据日期校验</b><span class="chip off" id="gateState">读取中</span></div>
+      <div class="gate-grid">
+        <div class="gcell"><div class="k">看板数据日期</div><div class="v" id="gDate">—</div></div>
+        <div class="gcell"><div class="k">目标（昨天）</div><div class="v" id="gTarget">—</div></div>
+      </div>
+      <p class="gate-note" id="gNote">规则：只有数据日期等于昨天，才执行下面的下载、分析与卡片推送（第 1、2 张即时发，第 3 张紧跟第 2 张卡发＝「已反馈统计①」，已反馈 &gt; 10 家时第 11 家起脱离成「已反馈统计②」（&gt; 20 家再开③，一直分页），16:00–23:50 每 10 分钟把卡片 2 与各页 @店长 逐条 逐条删除→等 5 秒→恢复）；否则<strong>所有步骤都不执行</strong>。</p>
+    </section>
+
+    <!-- ============ 唯一的定时任务 ============ -->
+    <div class="section-title">任务列表 · 01</div>
+    <section class="task-card" data-task="01">
+      <div class="task-top">
+        <span class="task-id">#01</span>
+        <span class="badge">同一个任务 · 群卡（1 纵向、2 两图+单栏待反馈明细+16:00 回复率未反馈、3 已反馈统计①（待办+前10家）、4 已反馈统计②（&gt;10家脱离，>20家再开③…）、最后一张为 23:00 汇总卡；星级群 22:00 卡已删除，另 22:00 向两个反馈群各发「6 点未反馈统计」） + 16:00–23:50 每 10 分钟把卡片 2/3 的 @店长 逐条删除→等 5 秒→恢复（@ 循环刷新）</span>
+        <span class="spacer"></span><span class="task-index">TASK 01</span>
+      </div>
+      <label class="field-label">任务名称</label>
+      <input class="task-name" id="taskName" value="星级群每日追踪汇总" autocomplete="off" spellcheck="false">
+      <div class="flow col">
+        <span class="step"><b>第 1 张</b> 星级汇总 4 要点 · 纵向排列（不含图）<em>14:15 起 · 闸门通过后</em></span>
+        <span class="step t2"><b>第 2 张</b> 两图缩小并排（保持）＋ 单栏今日待反馈明细（按渠道列条数，已反馈统计归第 3 张卡）<em>紧跟第 1 张</em></span>
+        <span class="step t3"><b>第 3 张</b> 已反馈统计①：今日待办 ＋ 前 10 家已反馈（每店一行，审核不过当场 @店长）＋ 反馈/重交键<em>紧跟第 2 张卡发</em></span>
+        <span class="step t4"><b>第 4 张</b> 已反馈 &gt; 10 家：第 11-20 家脱离成「已反馈统计②」，&gt; 20 家再开③…一直分页<em>&gt; 10 家自动触发</em></span>
+        <span class="step t4"><b>最后一张 · 汇总卡</b> 23:00 新发「未反馈门店汇总」@ 魏兆翔/魏兆翎/莫恩健，三项家数<b>随提交每 10 秒自动更新</b>，23:59 定格<em>23:00</em></span>
+        <span class="step t4"><b>@店长循环刷新</b> 每 10 分钟把卡片 2/3 的 @店长 逐条删除→等 5 秒→恢复，让群内 @ 持续重新触发（仅原地 PATCH，绝不在群里发新消息）<em>16:00–23:50</em></span>
+        <span class="step t4"><b>归档</b> 24:00 统计归档 · 23:59 封板不再改判<em>24:00</em></span>
+      </div>
+      <p class="field-hint">同一个定时任务，群卡由同一进程调度：每天 <b>14:15</b> 起每 <b>15 分钟</b>检查日期闸门，通过后<b>先发第 1 张（只有文字分析）、紧跟第 2 张（两张图并排保持 + 单栏「今日待反馈明细」：@店长：渠道名称 中评 x 条 / 差评 x 条，门店一在卡片 3 被列为「已反馈」→ 卡片 2 明细<b>立即删除该店、并停止 @</b>）</b>（第 2 张<b>不含</b>已反馈统计与待整改）；<b>紧跟第 2 张卡片</b>自动发<b>第 3 张「已反馈统计①（今日待办 + 前 10 家已反馈：每店一行『昨日中评/差评 x 条 · 回复率截图 · 中评』，只有差评反馈单独一行，0 条项不显示不统计，审核不过当场 @店长 标红）＋ 反馈提交 / 重交键」</b>；<b>已反馈 &gt; 10 家时</b>：第 11 家起脱离成<b>第 4 张「已反馈统计②」</b>，&gt; 20 家再开③，一直分页（<b>按键只在第①张</b>）；<b>星级群 22:00 不再发卡（旧第 5 张已删除）；另 22:00 向「T 门店反馈收集群」「小加盟店长沟通群」各发一张「6 点未反馈统计」卡（各 @ 本群店长：今日未发 / 近3天持续未发 / 近7天 top3 / 当天未测油）</b>；<b>卡片 2 从 16:00 起在最下方插入「未反馈统计（回复率截图未反馈）」@店长</b>；反馈提交键一直保留在卡 2 / 卡 3（至 23:59 封板）。卡片每 10 秒原地刷新，补交后记录自动消失；<b>23:59 封板后</b>：内容全部保留、只删除按键（结果不再改变）。<br><b>@店长循环刷新（16:00–23:50 每 10 分钟）</b>：把卡片 2「未反馈名单（中差评）/ 回复率截图未反馈」与各页「已反馈统计」里审核不过的 @店长，每 10 分钟逐家执行 <b>逐一：第 1 家删 @ 生效 → 等 5 秒 → 恢复 @ 生效 → 第 2 家…逐条走完</b>（全程仅原地 PATCH 编辑现有卡片，<b>绝不在群里发新消息</b>），让群内 @ 持续重新触发；<b>门店一旦已反馈，卡片 2 明细立即删除该店、对应 @ 自动取消</b>。<b>23:00</b> 新发最后一张「未反馈门店汇总」卡 @ 魏兆翔/魏兆翎/莫恩健，三项家数随提交自动更新，23:59 定格。</p>
+      <div class="links">
+        <a class="link" id="formLink" href="#" target="_blank" rel="noopener">
+          <span class="lk">反馈表单</span><span class="lv">中差评 / 回复率填写</span><span class="arrow">↗</span></a>
+        <a class="link" id="baseLink" href="#" target="_blank" rel="noopener">
+          <span class="lk">多维表格</span><span class="lv">中差评和回复率回馈</span><span class="arrow">↗</span></a>
+      </div>
+      <p class="field-hint" style="margin-top:-2px">本页只展示卡片模板与调度状态，不读取真实门店 / 真实统计；要看当天真实数据请直接在飞书群里看卡片。</p>
+      <div class="divider"></div>
+      <div class="actions">
+        <button class="btn btn-ghost" data-run="trial">
+          <span class="btn-title">测试整套</span><span class="btn-sub">一整套发我（群卡 + @刷新 + 23:00 汇总卡）</span><span class="spinner"></span>
+        </button>
+        <button class="btn btn-primary" data-run="live">
+          <span class="btn-title">正式运行</span><span class="btn-sub">连发到星级店长群</span><span class="spinner"></span>
+        </button>
+      </div>
+      <div class="sub-actions">
+        <button class="mini" data-fb="poll">刷新统计（读表·审核）</button>
+        <button class="mini" data-fb="summary-preview">预览 23:00 汇总卡（@ 魏兆翔/魏兆翎/莫恩健）</button>
+      </div>
+      <div class="runinfo" id="runInfo"><span class="k">最近一次运行：</span>尚无记录</div>
+    </section>
+
+    <section class="result" id="resultCard">
+      <div class="result-head"><b>第 1 张卡片 · 星级汇总 4 要点（纵向排列）</b><span id="resultTs">—</span></div>
+      <div id="resultBody"><div class="empty">尚无运行结果</div></div>
+    </section>
+
+    <section class="result" id="fbResult">
+      <div class="result-head"><b>第 2 张 · 两图并排（保持）＋ 单栏今日待反馈明细（不含统计/待整改）　第 3 张 · 已反馈统计①（今日待办 + 前 10 家已反馈）</b><span id="fbTs">—</span></div>
+      <div id="fbBody"><div class="empty">等待门店提交反馈…</div></div>
+    </section>
+
+    <section class="result" id="smResult">
+      <div class="result-head"><b>③ 已反馈统计① ＋ ④ 已反馈统计②（&gt;10 家脱离，&gt;20 家再开③…）　最后一张：23:00 汇总卡</b><span id="smTs">—</span></div>
+      <div id="smBody"><div class="empty">已反馈 &gt; 10 家时：第 11 家起脱离成卡 4「已反馈统计②」，&gt; 20 家再开③…一直分页；审核不过的问题直接在门店行里 @店长；反馈提交 / 重交键只在第①张（至 23:59 封板）；23:00 新发最后一张「未反馈门店汇总」，数字随提交自动更新。</div></div>
+    </section>
+
+    <section class="result" id="dmResult">
+      <div class="result-head"><b>16:00–23:50 · 每 10 分钟 @刷新（卡片 2 / 卡片 3 · 逐条删除@→等 5 秒→恢复@）</b><span id="dmTs">—</span></div>
+      <div id="dmBody"><div class="empty">模板加载中…</div></div>
+    </section>
+
+    <section class="log-panel" data-log="01">
+      <div class="log-head"><span class="log-dot"></span><span class="log-title">任务日志 · 群卡 + 16:00–23:50 每 10 分钟 @刷新 · 同一个任务</span>
+        <button class="log-clear" data-clear="1">清空</button></div>
+      <div class="log-body" id="logBody"><div class="log-empty">等待运行…</div></div>
+    </section>
+
+    <p class="foot">同一个定时任务 #01（卡片 1 四要点纵向排列、卡片 2 两图并排 + 单栏今日待反馈明细【按渠道列条数、反馈后取消@，16:00 起最下方加回复率未反馈】、卡片 3 已反馈统计①（待办+前10家）、卡片 4 已反馈统计②（&gt;10家脱离）、最后一张为 23:00 未反馈门店汇总卡）· <b>14:15</b> 起每 15 分钟过日期闸门 → 第 1 张（星级汇总 4 要点，不含图）→ 第 2 张（顾客满意 + 中差评两张图并排 + 单栏「今日待反馈明细」，反馈后取消@）→ <b>紧跟第 2 张卡</b>自动发第 3 张「已反馈统计①」（待办 + 前 10 家已反馈，每店一行、只有差评反馈换行、审核不过当场 @店长）→ <b>已反馈 &gt; 10 家</b>：第 11 家起脱离成第 4 张「已反馈统计②」，&gt; 20 家再开③…一直分页；最后一张为 23:00「未反馈门店汇总」卡（数字随提交自动更新，23:59 定格） ｜<b>16:00–23:50</b> 每 10 分钟把卡片 2/3 的 @店长 逐条删除→等 5 秒→恢复（@ 循环刷新，补交后 @ 自动取消，绝不在群里发新消息）；表单提交后卡片原地刷新，不重发；<b>23:59</b> 封板：内容全部保留、只删除按键（结果不再改变）｜<b>24:00</b> 统计归档</p>
+  </main>
+</div></div>
+
+<script>
+(function(){
+  "use strict";
+  var $ = function(s){ return document.querySelector(s); };
+  var esc = function(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); };
+  var localRuns = [];
+
+  function api(path, opt){
+    opt = opt || {};
+    return fetch(path, {method: opt.method || "GET",
+      headers: {"Content-Type":"application/json"},
+      body: opt.body ? JSON.stringify(opt.body) : undefined, cache:"no-store"})
+      .then(function(r){ return r.json(); });
+  }
+  function setChip(el, text, cls){ el.textContent=text; el.className="chip"+(cls?" "+cls:""); }
+  function ts(){ return new Date().toTimeString().slice(0,8); }
+
+  // ---------- 日期闸门 ----------
+  function renderGate(s){
+    var g=s.gate||{}, sc=s.schedule||{};
+    $("#gDate").textContent=g.data_date||"—";
+    $("#gTarget").textContent=g.target_date||"—";
+    if(g.passed){
+      setChip($("#gateChip"),"闸门通过","ok"); setChip($("#gateState"),"可运行","ok");
+      $("#gNote").innerHTML="数据日期已等于昨天，<strong style='color:var(--green)'>闸门通过</strong>，可执行下载、分析与卡片推送（第 3 张紧跟第 2 张卡发＝已反馈统计①，已反馈 &gt; 10 家时第 11 家起脱离成「已反馈统计②」（&gt; 20 家再开③，一直分页），16:00–23:50 每 10 分钟把卡片 2 与各页 @店长 逐条 逐条删除→等 5 秒→恢复@）。";
+    }else{
+      setChip($("#gateChip"),"数据未更新","warn"); setChip($("#gateState"),"已阻断","warn");
+      $("#gNote").innerHTML="数据日期 "+esc(g.data_date||"—")+" ≠ 昨天 "+esc(g.target_date||"—")+
+        "，<strong>所有步骤都不执行</strong>；"+esc(sc.next_check_note||"14:20 起每 15 分钟复查")+"。";
+    }
+    setChip($("#svcChip"),"服务在线","ok");
+  }
+
+  // ---------- 三个结果区：只展示卡片模板，不读取真实数据 ----------
+  var TPL_NOTE='<div class="blk-note" style="color:var(--text-3)">模板预览 · 下面出现的门店 / 店长全部是示例占位，网页不读取真实统计数据</div>';
+  function tplLine(name, mgr, val, unit){
+    return '<div class="rrow"><span class="at">@'+mgr+'</span><span class="nm">'+name+'</span>'+
+      '<span class="mg">-'+mgr+'</span><span class="vv">'+val+unit+'</span></div>';
+  }
+  function tplNames(list){
+    return list.map(function(x){ return '<span class="smname">@'+esc(x)+'</span>'; }).join("");
+  }
+  function renderResult(s){
+    $("#resultTs").textContent="模板 · 示例数据";
+    var h=TPL_NOTE;
+    h+='<div class="blk-note">四要点改为 <b>纵向排列</b>（每个要点占满整行，取消并排），顶部 4 个指标数字仍是一行 4 列。</div>';
+    var b1='<div class="rblock"><h3>一、满意得分 &lt;3 分门店（共 2 家）</h3>'+
+       tplLine("示例门店A","示例店长A","2.86"," 分")+
+       tplLine("示例门店B","示例店长B","2.41"," 分")+'</div>';
+    var b2='<div class="rblock"><h3>二、外部星级板块 · 带 ⬇️ 即下滑（共 3 家）</h3>'+
+       '<div class="rsub">美团外卖 · 2 家下滑</div>'+
+       tplLine("示例门店A","示例店长A","4.62"," 分")+
+       tplLine("示例门店C","示例店长C","4.38"," 分")+
+       '<div class="rsub">淘宝闪购 · 1 家下滑</div>'+
+       tplLine("示例门店D","示例店长D","4.51"," 分")+'</div>';
+    var b3='<div class="rblock"><h3>三、不满意发生 &gt;20 门店（共 2 家）</h3>'+
+       tplLine("示例门店B","示例店长B","27","")+
+       tplLine("示例门店E","示例店长E","23","")+'</div>';
+    var b4='<div class="rblock"><h3>四、中差评回复率 &lt;100% 门店（共 2 家）</h3>'+
+       tplLine("示例门店C","示例店长C","80","%")+
+       tplLine("示例门店F","示例店长F","66","%")+'</div>';
+    h+='<div class="tpl-pair">'+b1+b2+'</div><div class="tpl-pair">'+b3+b4+'</div>';
+    $("#resultBody").innerHTML=h;
+  }
+
+  // ---------- 第 2 张 / 第 3 张模板 ----------
+  function mk(v){
+    if(v==="ok") return '<span class="mk y">✅</span>';
+    if(v==="fail") return '<span class="mk n">❌</span>';
+    return '<span class="mk na">— 无需</span>';
+  }
+  function renderFeedback(s){
+    var fb=s.feedback||{};
+    $("#formLink").href=fb.form_url||"#";
+    $("#baseLink").href=fb.bitable_url||"#";
+    if(fb.poll_seconds) setChip($("#pollChip"),"每秒轮询 · "+fb.poll_seconds+"s","ok");
+    $("#fbTs").textContent="模板 · 示例数据";
+
+    var h='<div class="blk-title">第 2 张 · 两张图并排（再缩一圈） <span class="cnt">顾客满意 ＋ 中差评明细</span></div>';
+    h+='<div class="blk-note">左右两列各占一半，各自再留 26px 空白让图缩一圈（网页不加载真实图片，占位框已同步缩小示意）；点单张可看原图。</div>';
+    h+='<div class="tpl-imgs"><div class="tpl-img">顾客满意<span>示例图片 1</span></div>'+
+       '<div class="tpl-img">中差评明细<span>示例图片 2</span></div></div>';
+    h+='<div class="blk-title" style="margin-top:12px">第 2 张下方 · 今日待反馈明细 <span class="cnt">单栏（已取消并行）</span></div>';
+    h+='<div class="rblock" style="font-size:11.5px;line-height:1.9">'+
+       '<div><b>@示例店长A：</b>京东外卖 中评 0 条 / 差评 1 条</div>'+
+       '<div style="padding-left:5.5em">美团外卖 中评 1 条 / 差评 0 条</div>'+
+       '<div><b>@示例店长B：</b>饿了么 中评 0 条 / 差评 2 条</div>'+
+       '</div>';
+    h+='<div class="blk-note">两个图片<b>保持并行</b>，只有待反馈消息取消并行改单栏：按店长 @ 一次，逐渠道列出「渠道名称 中评 x 条 / 差评 x 条」，多渠道换行缩进对齐；数据来自当天中差评明细看板（已剔除智慧门店渠道）。<b>门店反馈后，该店长的 @ 记录自动取消（明细动态收缩）</b>。<b>本卡不含「已反馈统计」，统一在第 3 张卡片。</b></div>';
+    h+='<div class="blk-note" style="color:var(--red)">🚫 <b>智慧门店渠道</b>（渠道名含「智慧」）的中评 / 差评由平台自动产生、无需门店回复反馈：识别「今日有无中差评」时直接剔除，<b>不 @ 对应店长、也不统计它有无反馈</b>。</div>';
+
+    h+='<div class="blk-title" style="margin-top:14px">第 3 张 · 已反馈统计①（今日待办 + 前 10 家） <span class="cnt">紧跟第 2 张卡发</span></div>';
+    h+='<div class="blk-note">今日待办：① 差评处理　② 中评回复 + 申诉　③ 全部门店回复率截图（5 分钟、1 分钟均需 100%）</div>';
+    h+='<div class="blk-note" style="color:var(--brand-ink)">🔍 <b>回复率截图 · 自动判定只认「今日」是否 100%</b>：版式①横幅页右上角「今日」两个 100%（左侧可能写 7日未获权益 / 已获银牌 / 已获金牌）；版式②消息权益页「权益指标」中下位置「今日」两个 100% ＋「过去 7 天平均回复率 xxx%」。<b>过去 7 天 / 7 日数字不参与判定</b>（96%、94% 忽略）；今日真未达标（90%、80%）仍判不通过。每张截图自动做 2~3 轮多方式识别（正向 / 二值 / 旋转 90°），任一命中即通过，旋转翻拍的合规截图也能识别，补交后自动改判。</div>';
+    h+='<div class="blk-note">统计模板：<b>不显示「已反馈✅」</b>；每家门店一块 → 【门店名称：】/ 回复率截图✅❌，中评✅❌（依卡 2 明细判断今日有无中评）/ 差评：删除 x 条，申诉 x 条，无法处理 x 条。</div>';
+    h+='<div class="rblock" style="font-size:11.5px;line-height:1.85">';
+    [["示例门店A","✅","<font style=\"color:#999\">— 无需</font>","差评：删除 1 条，申诉 0 条，无法处理 0 条"],
+     ["示例门店B","✅","✅","差评：删除 0 条，申诉 2 条，无法处理 1 条"],
+     ["示例门店C","❌","✅","差评：删除 1 条，申诉 1 条，无法处理 0 条"],
+     ["示例门店D","✅","<font style=\"color:#999\">— 无需</font>","差评：<font style=\"color:#999\">— 无需（今日无差评）</font>"],
+     ["示例门店E","✅","<font style=\"color:#999\">— 无需</font>","差评：<span style=\"color:var(--red)\">❌ 未反馈差评</span>（店长填「无 / 没有 / 为空」）"]].forEach(function(r){
+      h+='<div style="padding:5px 0;border-bottom:1px dashed var(--line)"><b>【门店名称：'+r[0]+'】</b><br>'+
+         '回复率截图 '+r[1]+'，中评 '+r[2]+'<br>'+r[3]+'</div>';
+    });
+    h+='</div>';
+    h+='<div class="blk-note">差评条数来自店长填写的「差评反馈」文本，按关键字自动归类：<b>已删除 / 删除 / 撤销… → 删除</b>；<b>已审批 / 申诉中 / 申诉掉 / 申诉… → 申诉</b>；<b>无 / 没有 / 为空… → 不做统计</b>（有差评的门店这样反馈判 ❌ 未反馈差评）；<b>其他 → 无法处理</b>。</div>';
+    h+='<div class="blk-title" style="margin-top:10px">审核不过 · 直接在门店行内 @店长 <span class="cnt">如：1 家</span></div>';
+    h+='<div class="rblock"><div style="color:var(--red);font-weight:600;font-size:11.5px;padding:3px 0">'+
+       '@示例店长C 示例门店C 今日反馈有误：差评回复截图未上传</div></div>';
+    h+='<div class="blk-title" style="margin-top:10px">卡片底部 · 反馈提交键 / 重交键 <span class="cnt">只在第①张；至 23:59 封板</span></div>';
+    h+='<div class="tpl-btns"><span class="tpl-btn primary">中差评处理 / 回复率100%反馈</span>'+
+       '<span class="tpl-btn">重交</span></div>';
+    h+='<div class="blk-note" style="text-align:center;margin-top:6px"><b>重交自动改判</b><br>'+
+       '<span style="color:var(--text-3)">最近同步 示例 22:00:00</span></div>';
+    h+='<div class="blk-note" style="margin-top:10px;color:var(--red)">🔀 已反馈 &gt; 10 家时：第 11 家起脱离成<b>第 4 张「已反馈统计②」</b>，&gt; 20 家再开③…一直分页；按键只在第①张；星级群 22:00 不发卡，两个反馈群 22:00 各发「6 点未反馈统计」卡。</div>';
+    $("#fbBody").innerHTML=h;
+  }
+
+  // ---------- 已反馈统计①/② / 汇总卡 模板 ----------
+  function smGroup(title, names, color){
+    var n=names.length;
+    return '<div class="rblock"><h3 style="color:'+color+'">'+title+' · '+n+' 家</h3>'+
+      '<div class="smwrap">'+tplNames(names)+'</div></div>';
+  }
+  function renderSummary(s){
+    $("#smTs").textContent="模板 · 示例数据";
+    var h='<div class="blk-title">③ 第 3 张 · 已反馈统计①（今日待办 + 前 10 家） <span class="cnt">紧跟第 2 张卡发</span></div>';
+    h+='<div class="blk-note">平时纵向顺序：今日待办（@all）→ 前 10 家已反馈门店（每店一行「昨日中评/差评 x 条 · 回复率截图 · 中评」，只有差评反馈单独一行，0 条项不显示不统计；审核不过当场 @店长 标红原因）→ 反馈提交键 / 重交键。每 10 秒原地刷新，不重发。</div>';
+    h+='<div class="blk-note" style="color:var(--red)">🔀 已反馈 &gt; 10 家：第 11-20 家脱离成第 4 张「已反馈统计②」，&gt; 20 家再开③…一直分页；按键只在第①张。</div>';
+    h+='<div class="blk-note" style="color:var(--red)">🔒 23:59 封板：内容全部保留，只关闭「反馈提交 / 重交」按键，补交不再记录。</div>';
+
+    h+='<div class="blk-title" style="margin-top:16px">④ 已反馈统计② · 已反馈 &gt; 10 家时自动生成 <span class="cnt">第 11-20 家</span></div>';
+    h+='<div class="blk-note">只放第 11-20 家已反馈门店，格式与①相同；<b>不放任何按键</b>。每 10 秒原地刷新，23:59 封板后转为灰色定格。</div>';
+
+    h+='<div class="blk-title" style="margin-top:16px">④ 16:00–23:50 · 每 10 分钟 @店长 循环刷新 <span class="cnt">逐条删除@→等 5 秒→恢复@ · 绝不在群里发新消息</span></div>';
+    h+='<div class="blk-note">把卡片 2「未反馈名单（中差评）/ 回复率截图未反馈」与各页「已反馈统计」里审核不过的 @店长，每 10 分钟逐家执行 <b>逐一：第 1 家删 @ 生效 → 等 5 秒 → 恢复 @ 生效 → 第 2 家…逐条走完</b>（全程仅原地 PATCH 编辑现有卡片，<b>绝不在群里发新消息</b>），让群内 @ 持续重新触发。<b>门店一旦已反馈 → 卡片 2 明细立即删除该店、对应 @ 自动取消</b>；反馈提交键一直保留在卡 2 / 卡 3（至 23:59 封板）。</div>';
+    h+='<div class="blk-title" style="margin-top:14px">23:00 汇总卡 <span class="cnt">唯一例外：新发一条群卡片</span></div>';
+    h+='<div class="rblock"><div class="blk-note" style="margin:8px 0 0"><b>23:00 自动新发一条卡片</b>，@ 魏兆翔 / 魏兆翎 / 莫恩健 三人，写明「以上未反馈门店请查收」，并附回复率未反馈 / 待整改家数；当天按日期去重只发一次（<b>私聊提醒卡已彻底移除</b>）。</div>'+
+       '<div class="blk-note" style="margin-top:8px"><b>24 点统计归档，请注意时间</b><br><span style="color:var(--text-3)">未反馈门店每 10 分钟 @ 刷新一次（16:00–23:50）· 补交反馈后 @ 自动取消</span></div></div>';
+    h+='<div class="blk-note" style="color:var(--red)">🚫 <b>智慧门店渠道</b>（渠道名含「智慧」）的中评 / 差评无需门店反馈：不进卡片 2 明细、不 @、不统计；<b>回复率截图仍按全部 26 家（不含寮步城市店）要求</b>。</div>';
+    $("#smBody").innerHTML=h;
+  }
+
+  // ---------- ⑤ 16:00–23:50 每 10 分钟 @店长 循环刷新（删除@→等5秒→重填@） ----------
+  function renderDm(s){
+    var fb=s.feedback||{}, w2=fb.dm_2000||{}, w3=fb.dm_2200||{};
+    $("#dmTs").textContent="实时 · 来自状态接口";
+    var h='<div class="blk-title">16:00–23:50 · 每 10 分钟 @店长 循环刷新 <span class="cnt">卡片 2 / 卡片 3</span></div>';
+    h+='<div class="blk-note">每 <b>10 分钟</b>（16:00、16:10…23:50）把卡片 2「今日待反馈明细 / 回复率截图未反馈」、卡片 3「待整改」里的 @店长 <b>逐一：第 1 家删 @ 生效 → 等 5 秒 → 恢复 @ 生效 → 第 2 家…逐条走完</b>（仅原地 PATCH，<b>绝不在群里发新消息</b>）。<b>门店已反馈 → 卡片 2 明细立即删除并停止 @</b>。私聊提醒卡已彻底移除。</div>';
+    h+='<div class="blk-title" style="margin-top:12px">执行状态 <span class="cnt">只显示波次时间，不显示店长身份</span></div>';
+    h+='<div class="rblock">'+
+       '<div class="rrow"><span class="nm">卡片 2 @刷新 · 最近一波</span><span class="vv" style="color:'+(w2.sent?'var(--green)':'var(--text-3)')+'">'+(w2.sent?('已执行 · '+esc((w2.ts||'').slice(5,16))):'未到执行时间')+'</span></div>'+
+       '<div class="rrow"><span class="nm">卡片 3 @刷新 · 最近一波</span><span class="vv" style="color:'+(w3.sent?'var(--green)':'var(--text-3)')+'">'+(w3.sent?('已执行 · '+esc((w3.ts||'').slice(5,16))):'未到执行时间')+'</span></div>'+
+       '<div class="rrow"><span class="nm">刷新节奏</span><span class="vv">16:00–23:50 · 每 10 分钟</span></div>'+
+       '<div class="rrow"><span class="nm">23:00 汇总卡</span><span class="vv">@ 魏兆翔 / 魏兆翎 / 莫恩健（当天一次）</span></div>'+
+       '</div>';
+    h+='<div class="blk-note" style="color:var(--text-3);margin-top:8px">网页只展示模板与调度状态，不读取真实店长身份；真实 @ 名单取卡片 2/3 当前未反馈门店，补交反馈后下一拍自动收缩。</div>';
+    $("#dmBody").innerHTML=h;
+  }
+
+  // ---------- 最近一次运行（只显示状态，不显示真实 message_id / 家数） ----------
+  function sId(x){ return x? esc(String(x).slice(0,10))+"…" : ""; }
+  function renderCombined(s){
+    var c=s.last_combined; if(!c) return;
+    var h='<span class="k">最近一次运行：</span>'+esc(c.ts||"")+" · "+(c.mode==="live"?"正式运行":"测试整套");
+    if(c.gate==="blocked"){
+      h+='<br><span style="color:var(--red)">⛔ 日期闸门未通过，所有步骤均未执行</span>';
+    }else if(c.ok){
+      h+='<br>第 1 张 <b>'+esc(c.card1.name)+'</b> ✅ <span class="k">'+sId(c.card1.message_id)+'</span>';
+      h+='<br>第 2 张 <b>'+esc(c.card2.name)+'</b> ✅ <span class="k">'+sId(c.card2.message_id)+'</span>';
+      var fb2=s.feedback||{};
+      if(fb2.handoff_message_id){
+        h+='<br>第 3 张 <b>今日待办 / 统计 / 待整改（&gt;12 家待整改+重交键分离成卡 4）</b> ✅ <span class="k">'+sId(fb2.handoff_message_id)+'</span>';
+      }
+      if(fb2.summary_at_message_id){
+        h+='<br>最后一张 <b>未反馈门店汇总 · 23:00（数字自动更新至 23:59）</b> ✅ <span class="k">'+sId(fb2.summary_at_message_id)+'</span>';
+      }
+    }else{
+      h+='<br><span style="color:var(--red)">失败：'+esc(c.error||"")+'</span>';
+    }
+    $("#runInfo").innerHTML=h;
+  }
+
+  // ---------- 单个日志框 ----------
+  function renderLogs(serverLines, local){
+    var lines=(serverLines||[]).slice(-120), body=$("#logBody");
+    if(!lines.length && !local.length){ body.innerHTML='<div class="log-empty">等待运行…</div>'; return; }
+    var h="";
+    local.slice().reverse().forEach(function(r){
+      h+='<div class="run-block"><div class="run-head">RUN '+esc(r.tag)+' · '+esc(r.label)+' · '+esc(r.ts)+'</div>';
+      r.lines.forEach(function(l){ h+='<div class="log-line '+esc(l.level)+'">'+esc(l.msg)+'</div>'; });
+      h+='</div>';
+    });
+    if(lines.length){
+      h+='<div class="run-block"><div class="run-head">服务端日志（最近 '+lines.length+' 条）</div>';
+      lines.forEach(function(l){
+        var cls=l.indexOf("[T02]")===0?"t02":"";
+        h+='<div class="log-line '+cls+'">'+esc(l)+'</div>';
+      });
+      h+='</div>';
+    }
+    body.innerHTML=h;
+  }
+
+  function refresh(){
+    return api("/api/status").then(function(s){
+      renderGate(s); renderResult(s); renderFeedback(s); renderSummary(s); renderDm(s); renderCombined(s);
+      renderLogs(s.combined_logs || s.logs, localRuns);
+    }).catch(function(){
+      setChip($("#svcChip"),"离线预览","off");
+      $("#gNote").textContent="未连接到调度服务，当前为本地预览。发布为在线应用后此处显示真实闸门与日志。";
+    });
+  }
+
+  function pushRun(label, lines){
+    localRuns.push({tag:String(localRuns.length+1).padStart(2,"0"),label:label,ts:ts(),lines:lines});
+    renderLogs([],localRuns);
+  }
+  function busy(btn,on){ btn.classList.toggle("is-loading",!!on); btn.disabled=!!on; }
+
+  // ---------- 主按钮：同一个任务连发两张卡片 ----------
+  var runBtns=document.querySelectorAll("[data-run]");
+  Array.prototype.forEach.call(runBtns,function(btn){
+    btn.addEventListener("click",function(){
+      var mode=btn.getAttribute("data-run"); busy(btn,true);
+      api("/api/run-task/"+mode,{method:"POST",body:{force:(mode==="trial")}}).then(function(r){
+        var lines=[];
+        if(r.ok){
+          lines.push({level:"ok",msg:"✅ 第 1 张卡片已发 · "+(r.card1.target||"")+" · "+r.card1.message_id});
+          lines.push({level:"ok",msg:"✅ 第 2 张卡片紧跟发出（两图并排 + 单栏今日待反馈明细，反馈后取消@，不含统计/待整改）· "+(r.card2.target||"")+" · "+r.card2.message_id});
+          lines.push({level:"ok",msg:"第 3 张统计板块：只统计已反馈门店（【门店名称：】+ 判定 + 差评三类计数，不显示「已反馈✅」）"});
+          if(r.card3 && r.card3.message_id){ lines.push({level:"ok",msg:"✅ 第 3 张「待办 / 统计 / 待整改」· "+r.card3.message_id+"（重交键跟随待整改，>12 家分离成卡 4）"}); }
+          if(r.card5 && r.card5.message_id){ lines.push({level:"ok",msg:"✅ 23:00 汇总卡模板预览（@ 魏兆翔/魏兆翎/莫恩健，仅发本人私聊）· "+r.card5.message_id}); }
+          if(r.card3_error){ lines.push({level:"warn",msg:"第 3 张失败："+r.card3_error}); }
+          if(r.card5_error){ lines.push({level:"warn",msg:"汇总卡预览失败："+r.card5_error}); }
+        }else if(r.gate==="blocked"){
+          lines.push({level:"warn",msg:"⛔ 闸门未通过："+r.date+" ≠ 昨天 "+r.target+" → 两张卡片及所有后续步骤都不执行"});
+        }else{ lines.push({level:"err",msg:"失败："+(r.error||"未知")}); }
+        pushRun(mode==="live"?"正式运行（一整套）":"测试整套（5 张发我）",lines); refresh();
+      }).catch(function(){ pushRun("试运行",[{level:"warn",msg:"离线预览：仅记录点击"}]); })
+        .then(function(){ busy(btn,false); });
+    });
+  });
+
+  // ---------- 辅助按钮 ----------
+  var fbBtns=document.querySelectorAll("[data-fb]");
+  Array.prototype.forEach.call(fbBtns,function(btn){
+    btn.addEventListener("click",function(){
+      var act=btn.getAttribute("data-fb"), orig=btn.textContent;
+      btn.textContent="执行中…"; btn.disabled=true;
+      api("/api/feedback/"+act,{method:"POST",body:{}}).then(function(r){
+        var lines=[],label="";
+        if(act==="poll"){ label="刷新统计"; lines.push({level:r.ok?"ok":"err",msg:r.ok?("✅ 已读表并原地刷新卡片 · "+r.shops+" 家反馈 · 审核="+(r.audited?"是":"否")):("失败："+(r.error||""))}); }
+        else if(act==="summary-preview"){ label="预览 23:00 汇总卡"; lines.push({level:r.ok?"ok":"err",msg:r.ok?("✅ 汇总卡已发预览（trial 仅发本人私聊）· "+(r.message_id||"")):("失败："+(r.error||""))}); }
+        else { label="操作完成"; lines.push({level:r.ok?"ok":"err",msg:r.ok?"✅ 已执行":"失败："+(r.error||"")}); }
+        pushRun(label,lines); refresh();
+      }).catch(function(){ pushRun(act,[{level:"warn",msg:"离线预览：仅记录点击"}]); })
+        .then(function(){ btn.textContent=orig; btn.disabled=false; });
+    });
+  });
+  document.querySelector("[data-clear]").addEventListener("click",function(){
+    api("/api/logs/clear",{method:"POST",body:{}}).then(function(){
+      localRuns=[]; renderLogs([],localRuns);
+    }).catch(function(){ localRuns=[]; renderLogs([],localRuns); });
+  });
+
+  refresh();
+  setInterval(refresh, 10000);
+})();
+</script>
+</body>
+</html>
