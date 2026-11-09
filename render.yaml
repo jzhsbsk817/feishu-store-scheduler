@@ -1,13 +1,17 @@
 # Render 部署清单（Background Worker）
 # 适用：常驻进程 + 内部调度 + 群消息轮询刷新型任务。
-# 免费档 plan: free 即常驻运行、不因闲置休眠，契合本项目的 24h 定时调度。
-# 用法：Render 控制台 → New → Blueprint → 选择本仓库 → 自动按本文件创建服务。
+#
+# ⚠️ 重要：Render 的「免费档」只有 Web Service，且 Web Service 会「15 分钟无流量就休眠」，
+#    不适用本项目的 24h 定时调度。Background Worker【没有免费实例】，最低是 512MB / $7 每月。
+#    故下方 plan 设为 "512mb"（付费常驻、不休眠）。若想完全免费，请改用 GitHub Actions 方案。
+#
+# 用法：Render 控制台 → New → Blueprint → 选择本仓库 → 自动按本文件创建服务（会提示选实例档位）。
 # 注意：APP_SECRETS 含密钥，未写死在文件里（避免公开仓库泄密），需在服务环境变量中手动填一次。
 services:
   - type: worker
     name: feishu-store-scheduler
     runtime: python
-    plan: free
+    plan: "512mb"
     region: singapore
     branch: main
     buildCommand: |
