@@ -16,5 +16,8 @@ deploy.log
 watchdog.log
 *.json.log
 
+# ---- GitHub Actions 不再使用（改用 Render Background Worker），排除 workflow ----
+.github/
+
 # ---- 去重标记需入库（跨运行持久化）----
 !markers.json

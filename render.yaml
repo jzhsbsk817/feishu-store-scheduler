@@ -1,0 +1,23 @@
+# Render 部署清单（Background Worker）
+# 适用：常驻进程 + 内部调度 + 群消息轮询刷新型任务。
+# 免费档 plan: free 即常驻运行、不因闲置休眠，契合本项目的 24h 定时调度。
+# 用法：Render 控制台 → New → Blueprint → 选择本仓库 → 自动按本文件创建服务。
+# 注意：APP_SECRETS 含密钥，未写死在文件里（避免公开仓库泄密），需在服务环境变量中手动填一次。
+services:
+  - type: worker
+    name: feishu-store-scheduler
+    runtime: python
+    plan: free
+    region: singapore
+    branch: main
+    buildCommand: |
+      pip install --upgrade pip
+      pip install -r app/requirements.txt
+      pip install playwright
+      python3 -m playwright install chromium || true
+    startCommand: bash app/start.sh
+    envVars:
+      - key: FB_MODE
+        value: live
+      - key: APP_SECRETS
+        sync: false

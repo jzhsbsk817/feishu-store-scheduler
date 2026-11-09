@@ -1,38 +1,30 @@
 #!/usr/bin/env bash
-# 启动脚本（不依赖 pyenv / 固定路径，适配任意干净的 Ubuntu/Debian 环境）
-# 用法：
-#   PORT=3000 FB_MODE=trial bash start.sh        # 试运行（卡片只发本人）
-#   PORT=3000 FB_MODE=live  bash start.sh        # 正式运行（发群 + 真 @ 店长）
-set -u
+# Render Background Worker 启动脚本
+# Render 自行管理进程生命周期，本脚本只做两件事：
+#   1) 从环境变量 APP_SECRETS（gzip+base64 的 tar 包）还原 config/ 与 .env（运行时，不入库）
+#   2) 前台常驻启动 Flask 调度服务（exec 交给 Render 管理，崩溃自动重启）
+set -e
 cd "$(dirname "$0")"
 
-PORT="${PORT:-3000}"
-FB_MODE="${FB_MODE:-trial}"
-
-echo "[start] 安装依赖..."
-python3 -m pip install --quiet --upgrade pip >/dev/null 2>&1 || true
-python3 -m pip install --quiet -r requirements.txt 2>&1 | tail -5 || true
+python3 - <<'PY'
+import os, io, base64, tarfile, gzip
+raw = os.environ.get("APP_SECRETS", "")
+if not raw:
+    print("[start] APP_SECRETS 未设置，假定本地已存在 config/ 与 .env（开发模式）", flush=True)
+else:
+    try:
+        blob = base64.b64decode(raw)
+        with gzip.GzipFile(fileobj=io.BytesIO(blob)) as gz:
+            tar_bytes = gz.read()
+        with tarfile.open(fileobj=io.BytesIO(tar_bytes)) as tf:
+            tf.extractall(".")
+        print("[start] ✅ 已从 APP_SECRETS 还原 config/ 与 .env", flush=True)
+    except Exception as e:
+        print("[start] ❌ APP_SECRETS 还原失败：%s" % e, flush=True)
+        raise
+if "FB_MODE" not in os.environ:
+    os.environ["FB_MODE"] = "live"
+PY
 
 mkdir -p data
-if [ ! -f .env ]; then
-  echo "[start] ⚠ 未找到 .env，请先： cp .env.example .env  并填入飞书凭证，然后重新启动"
-fi
-
-# 单实例：终止已有 app.py / watchdog
-pkill -f "python3 app.py" 2>/dev/null && sleep 2 || true
-pkill -f "bash watchdog.sh" 2>/dev/null || true
-
-echo "[start] 启动 app.py  (PORT=$PORT, FB_MODE=$FB_MODE)"
-PORT="$PORT" FB_MODE="$FB_MODE" setsid nohup python3 app.py >> deploy.log 2>&1 < /dev/null &
-echo $! > app.pid
-
-# 启动看门狗（崩溃/探活失败自动重启；Northflank 不休眠，无需 cron）
-PORT="$PORT" FB_MODE="$FB_MODE" setsid nohup bash watchdog.sh >> watchdog.log 2>&1 < /dev/null &
-
-sleep 7
-if curl -sf -m 5 "http://127.0.0.1:$PORT/api/heartbeat" >/dev/null 2>&1; then
-  echo "[start] ✅ 心跳正常，服务已启动（PID $(cat app.pid)）"
-  echo "[start] 网页： http://<本机IP>:$PORT/    健康检查： curl localhost:$PORT/api/heartbeat"
-else
-  echo "[start] ❌ 心跳失败，最近日志："; tail -25 deploy.log
-fi
+exec python3 app.py
